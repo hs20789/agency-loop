@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <title>Agency Loop</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/fonts.css">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -37,15 +38,58 @@
 
   <main id="main" class="container" tabindex="-1">
     <section class="panel" id="step-upload" aria-labelledby="upload-title">
+      <div class="band band-hero">
+        <div class="hero">
+          <div class="hero-copy">
       <h2 id="upload-title" tabindex="-1"><span class="step-badge" aria-hidden="true">1</span> 세션 업로드</h2>
-      <p class="callout callout-warn"><strong>수업 기간에는 공개·연습용 세션만 올려 주세요</strong> 실제 개발 세션 원문은 올리지 마세요.</p>
+      <p class="hero-title">AI가 내린 결정을<br>이해하고, 검증하고, 통제합니다</p>
       <p class="lead">Claude Code 세션 JSONL 파일 1개(32MiB 이하)를 올리면, 분석에 필요한 항목만 남기고 비밀값·개인정보를 가린 뒤 의사결정 후보를 최대 3개 찾습니다. 파일은 서버 메모리에만 두며 60분 동안 쓰지 않으면 삭제합니다.</p>
+      <p class="callout callout-warn"><strong>수업 기간에는 공개·연습용 세션만 올려 주세요</strong> 실제 개발 세션 원문은 올리지 마세요.</p>
+          </div>
+          <div class="hero-card">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file-input" class="visually-hidden" accept=".jsonl,.json,.ndjson,application/x-ndjson,application/jsonl,application/json">
+        <label for="file-input" class="btn btn-secondary">파일 선택</label>
+        <p class="dropzone-hint">또는 JSONL 파일을 여기로 끌어다 놓으세요</p>
+        <p class="file-info" id="file-info">선택한 파일이 없습니다</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="upload-btn" disabled>분석 시작</button>
+        <button type="button" class="btn btn-secondary" id="demo-btn" aria-describedby="demo-hint">시연 파일로 바로 해 보기</button>
+        <p class="hint" id="replace-hint" hidden>새 파일을 분석하면 지금 작업 공간을 대체합니다.</p>
+      </div>
+      <p class="hint" id="demo-hint">세션 파일이 없다면 '시연 파일로 바로 해 보기'로 합성 연습 세션(demo_weather.jsonl)을 올려 볼 수 있습니다.</p>
+      <p class="progress" id="upload-progress" hidden></p>
+      <div class="alert alert-error" id="upload-error" role="alert" hidden></div>
+
+          </div>
+        </div>
+        <div class="glyphs deco-dark" aria-hidden="true"><span class="g-a">{</span><span>}</span><span>[</span><span>]</span><span>;</span><span>_</span><span>if</span><span>(</span><span>)</span><span class="g-b">=</span><span>.</span><span class="g-a">#</span><span>/</span><span class="g-c">&lt;</span><span>&gt;</span><span>:</span><span>"</span><span>+</span><span class="g-b">*</span><span>!</span><span>?</span><span>@</span><span class="g-a">%</span><span>&amp;</span><span>|</span><span>~</span><span class="g-c">^</span><span class="g-b">$</span><span>,</span><span>-</span><span>0</span><span>1</span><span>x</span><span class="g-a">fn</span><span>{</span><span>}</span><span class="g-b">[</span><span>]</span><span>;</span><span class="g-c">if</span><span>(</span><span>)</span><span>=</span><span>=&gt;</span><span class="g-a">.</span><span class="g-b">#</span><span>/</span><span>&lt;</span><span>&gt;</span><span>:</span><span>+</span><span>*</span><span class="g-c">!</span><span>?</span><span class="g-b">@</span><span class="g-a">%</span><span>&amp;</span><span>|</span><span>~</span><span>^</span><span>$</span><span>,</span><span>-</span><span class="g-b">0</span><span>1</span><span class="g-c">x</span><span class="g-a">_</span><span>{</span><span>}</span><span>[</span><span>]</span><span>;</span><span class="g-b">fn</span><span>(</span><span>)</span><span>=</span><span>.</span><span class="g-a">#</span><span class="g-c">/</span><span>&lt;</span><span>&gt;</span></div>
+        <div class="scene deco-light" aria-hidden="true"><img src="/static/img/astronaut-scene.svg" alt="" width="1440" height="480"></div>
+      </div>
+      <section class="scope" id="scope" aria-labelledby="scope-title" hidden>
+        <h3 id="scope-title">분석 가능 범위</h3>
+        <dl class="facts" id="scope-facts"></dl>
+        <div class="scope-group">
+          <h4>가린 항목 (대화·코드 입력)</h4>
+          <ul class="chips" id="scope-masked"></ul>
+        </div>
+        <div class="scope-group">
+          <h4>분석에서 제외한 기록 종류</h4>
+          <ul class="chips" id="scope-dropped"></ul>
+        </div>
+        <ul class="notices" id="scope-notices"></ul>
+        <p class="hint">테스트 기록은 있음/없음만 보여 줍니다. 건수와 결과는 결과 공개 전까지 보여 주지 않습니다.</p>
+      </section>
+      <h3 class="section-title">전체 흐름</h3>
       <ol class="howto" aria-label="전체 흐름">
         <li><strong>세션 올리기</strong> AI와 함께 개발한 대화 기록(JSONL)을 올립니다.</li>
         <li><strong>결정 하나 되짚기</strong> AI가 중요한 기술적 선택을 한 순간 하나를 골라, 결과를 예측해 보고 분석을 읽으며 원본 기록으로 직접 확인합니다.</li>
         <li><strong>가정 상황 연습</strong> "만약 ~라면?" 질문에 답하고 피드백을 받아 한 번 고쳐 냅니다.</li>
       </ol>
 
+      <h3 class="section-title">세션 파일 안내</h3>
       <div class="upload-help" id="upload-help">
         <details class="help" id="help-what">
           <summary>Claude Code 세션이란?</summary>
@@ -152,39 +196,10 @@
         </details>
       </div>
 
-      <div class="dropzone" id="dropzone">
-        <input type="file" id="file-input" class="visually-hidden" accept=".jsonl,.json,.ndjson,application/x-ndjson,application/jsonl,application/json">
-        <label for="file-input" class="btn btn-secondary">파일 선택</label>
-        <p class="dropzone-hint">또는 JSONL 파일을 여기로 끌어다 놓으세요</p>
-        <p class="file-info" id="file-info">선택한 파일이 없습니다</p>
-      </div>
-
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="upload-btn" disabled>분석 시작</button>
-        <button type="button" class="btn btn-secondary" id="demo-btn" aria-describedby="demo-hint">시연 파일로 바로 해 보기</button>
-        <p class="hint" id="replace-hint" hidden>새 파일을 분석하면 지금 작업 공간을 대체합니다.</p>
-      </div>
-      <p class="hint" id="demo-hint">세션 파일이 없다면 '시연 파일로 바로 해 보기'로 합성 연습 세션(demo_weather.jsonl)을 올려 볼 수 있습니다.</p>
-      <p class="progress" id="upload-progress" hidden></p>
-      <div class="alert alert-error" id="upload-error" role="alert" hidden></div>
-
-      <section class="scope" id="scope" aria-labelledby="scope-title" hidden>
-        <h3 id="scope-title">분석 가능 범위</h3>
-        <dl class="facts" id="scope-facts"></dl>
-        <div class="scope-group">
-          <h4>가린 항목 (대화·코드 입력)</h4>
-          <ul class="chips" id="scope-masked"></ul>
-        </div>
-        <div class="scope-group">
-          <h4>분석에서 제외한 기록 종류</h4>
-          <ul class="chips" id="scope-dropped"></ul>
-        </div>
-        <ul class="notices" id="scope-notices"></ul>
-        <p class="hint">테스트 기록은 있음/없음만 보여 줍니다. 건수와 결과는 결과 공개 전까지 보여 주지 않습니다.</p>
-      </section>
     </section>
 
     <section class="panel" id="step-mirror" aria-labelledby="mirror-title" hidden>
+      <div class="band">
       <h2 id="mirror-title" tabindex="-1"><span class="step-badge" aria-hidden="true">2</span> Agency Mirror</h2>
       <ol class="substeps" id="substeps" aria-label="Agency Mirror 하위 단계">
         <li aria-current="step">2-1 후보 선택</li>
@@ -193,22 +208,12 @@
         <li>2-4 심층 분석</li>
       </ol>
 
+        <div class="glyphs deco-dark" aria-hidden="true"><span>{</span><span>}</span><span>[</span><span class="g-b">]</span><span>;</span><span>_</span><span>if</span><span>(</span><span>)</span><span class="g-a">=</span><span>.</span><span>#</span><span class="g-b">/</span><span>&lt;</span><span>&gt;</span><span>:</span><span>"</span><span>+</span><span>*</span><span>!</span><span class="g-a">?</span><span class="g-b">@</span><span>%</span><span>&amp;</span><span>|</span><span class="g-c">~</span><span>^</span><span>$</span><span>,</span><span>-</span><span class="g-b">0</span><span class="g-a">1</span><span>x</span><span>fn</span><span>{</span><span>}</span><span>[</span><span>]</span><span class="g-c">;</span><span class="g-b">if</span><span>(</span><span>)</span><span class="g-a">=</span><span>=&gt;</span><span>.</span><span>#</span><span>/</span><span>&lt;</span><span class="g-b">&gt;</span><span>:</span><span>+</span><span class="g-c">*</span><span>!</span><span class="g-a">?</span><span>@</span><span>%</span><span>&amp;</span><span class="g-b">|</span><span>~</span><span>^</span><span>$</span><span>,</span><span>-</span><span>0</span><span class="g-a">1</span><span>x</span><span class="g-b">_</span><span>{</span><span>}</span><span>[</span><span>]</span><span>;</span><span>fn</span><span>(</span><span>)</span><span class="g-a">=</span><span>.</span><span class="g-c">#</span><span>/</span><span>&lt;</span><span>&gt;</span></div>
+        <div class="planets deco-light" aria-hidden="true"><img src="/static/img/planets-1.svg" alt="" width="1440" height="160"></div>
+      </div>
+      <div class="mirror-pick">
+        <div class="mirror-main">
       <h3>의사결정 후보</h3>
-      <section class="guide" id="candidate-guide" aria-labelledby="candidate-guide-title">
-        <h4 id="candidate-guide-title">무엇을 고르는 건가요?</h4>
-        <p><strong>의사결정 후보</strong>는 세션 속에서 AI가 <strong>중요한 기술적 선택</strong>을 한 순간입니다. 예를 들어 오류가 나면 어떻게 처리할지(오류 처리), 외부 API를 어떻게 부를지(외부 호출), 입력값을 어떻게 검사할지(입력 검증) 같은 결정입니다.</p>
-        <p>후보 하나를 고르면 <strong>그다음 모든 단계가 그 결정 하나</strong>를 다룹니다. 고른 뒤에는 이렇게 진행돼요.</p>
-        <ol class="guide-steps">
-          <li><strong>기록 확인 예측</strong> <span class="guide-when">카드에 '기록 확인 예측 가능'이 있을 때만</span> 결정 바로 뒤에 실행한 테스트가 통과했을지 실패했을지, 결과를 보기 전에 예측합니다.</li>
-          <li><strong>결과 공개</strong> 실제 기록된 결과와 내 예측을 나란히 봅니다. 맞히기 시험이 아니라 코드를 읽고 결과를 상상해 보는 연습입니다.</li>
-          <li><strong>Claude 심층 분석 + 개발 과정 리포트</strong> 그 결정의 이유·대안·가정·위험과 함께 세션 요약, 프롬프트에서 아쉬운 점과 고치는 법, 기록에서 확인되지 않는 부분, 다음 행동 제안을 받습니다. 모든 문장에는 어느 기록에서 왔는지가 붙어 있어 직접 확인할 수 있습니다.</li>
-          <li><strong>독립 검토</strong> <span class="guide-when">선택</span> 다른 모델(HCX-007·DeepSeek)의 의견을 받아 Claude와 비교합니다.</li>
-          <li><strong>가정 상황(What-if)</strong> "만약 상황이 이렇게 바뀌면?" 질문 네 개에 직접 답합니다.</li>
-          <li><strong>피드백과 재제출</strong> 답변에 대한 피드백을 받고, 한 번 고쳐 다시 낼 수 있습니다.</li>
-        </ol>
-        <p class="guide-lock"><strong>선택은 바꿀 수 없어요.</strong> 다른 후보의 기록을 보면 이 결정 뒤에 무슨 일이 있었는지(테스트 결과 등) 미리 알게 되어 예측이 의미 없어지기 때문입니다. 다른 후보를 보고 싶으면 같은 세션 파일을 다시 올려 새로 시작하세요.</p>
-        <p class="hint">카드에는 세션 원문을 넣지 않습니다. 분류별 고정 제목, 코드에서 찾은 신호, 파일, 원문 위치만 보여 줍니다.</p>
-      </section>
       <p class="empty" id="no-candidates" hidden>이 세션에서는 코드 변경이 기록된 의사결정 후보를 찾지 못했습니다. 위의 분석 가능 범위를 확인하고, 코드 변경이 기록된 다른 세션을 올려 주세요.</p>
       <fieldset class="cards-fieldset" id="candidate-fieldset">
         <legend class="visually-hidden">분석할 후보 하나를 고르세요</legend>
@@ -249,6 +254,24 @@
         <div class="alert alert-error" id="sa-error" role="alert" hidden></div>
         <button type="submit" class="btn btn-primary" id="sa-submit">이 후보로 시작</button>
       </form>
+
+        </div>
+      <section class="guide" id="candidate-guide" aria-labelledby="candidate-guide-title">
+        <h4 id="candidate-guide-title">무엇을 고르는 건가요?</h4>
+        <p><strong>의사결정 후보</strong>는 세션 속에서 AI가 <strong>중요한 기술적 선택</strong>을 한 순간입니다. 예를 들어 오류가 나면 어떻게 처리할지(오류 처리), 외부 API를 어떻게 부를지(외부 호출), 입력값을 어떻게 검사할지(입력 검증) 같은 결정입니다.</p>
+        <p>후보 하나를 고르면 <strong>그다음 모든 단계가 그 결정 하나</strong>를 다룹니다. 고른 뒤에는 이렇게 진행돼요.</p>
+        <ol class="guide-steps">
+          <li><strong>기록 확인 예측</strong> <span class="guide-when">카드에 '기록 확인 예측 가능'이 있을 때만</span> 결정 바로 뒤에 실행한 테스트가 통과했을지 실패했을지, 결과를 보기 전에 예측합니다.</li>
+          <li><strong>결과 공개</strong> 실제 기록된 결과와 내 예측을 나란히 봅니다. 맞히기 시험이 아니라 코드를 읽고 결과를 상상해 보는 연습입니다.</li>
+          <li><strong>Claude 심층 분석 + 개발 과정 리포트</strong> 그 결정의 이유·대안·가정·위험과 함께 세션 요약, 프롬프트에서 아쉬운 점과 고치는 법, 기록에서 확인되지 않는 부분, 다음 행동 제안을 받습니다. 모든 문장에는 어느 기록에서 왔는지가 붙어 있어 직접 확인할 수 있습니다.</li>
+          <li><strong>독립 검토</strong> <span class="guide-when">선택</span> 다른 모델(HCX-007·DeepSeek)의 의견을 받아 Claude와 비교합니다.</li>
+          <li><strong>가정 상황(What-if)</strong> "만약 상황이 이렇게 바뀌면?" 질문 네 개에 직접 답합니다.</li>
+          <li><strong>피드백과 재제출</strong> 답변에 대한 피드백을 받고, 한 번 고쳐 다시 낼 수 있습니다.</li>
+        </ol>
+        <p class="guide-lock"><strong>선택은 바꿀 수 없어요.</strong> 다른 후보의 기록을 보면 이 결정 뒤에 무슨 일이 있었는지(테스트 결과 등) 미리 알게 되어 예측이 의미 없어지기 때문입니다. 다른 후보를 보고 싶으면 같은 세션 파일을 다시 올려 새로 시작하세요.</p>
+        <p class="hint">카드에는 세션 원문을 넣지 않습니다. 분류별 고정 제목, 코드에서 찾은 신호, 파일, 원문 위치만 보여 줍니다.</p>
+      </section>
+      </div>
 
       <section class="selection" id="selection" aria-labelledby="selection-title" hidden>
         <h3 id="selection-title" tabindex="-1">선택한 후보</h3>
@@ -345,15 +368,21 @@
           <div class="job-line" id="job-summary" aria-live="polite"></div>
           <div id="summary-body"></div>
         </section>
+        <div class="evidence-col">
         <h4 id="evidence-title" tabindex="-1">원본 기록 — 확인 가능한 근거 <span class="tag tag-muted">규칙 엔진</span></h4>
         <p class="hint">후보의 요청부터 분석 범위 끝까지의 기록을 세션에서 일어난 순서 그대로, "무엇을 시켰고 → 어떻게 고쳤고 → 어떻게 확인했는지"로 묶어 보여 줍니다. 위의 요약과 분석은 이 이야기의 줄거리이고, 아래가 원본입니다. 나중에 고친 코드는 보여 주지 않고 '이후 수정 있음(정답 아님)' 태그로만 알립니다.</p>
         <nav class="plot" id="evidence-plot" aria-label="흐름 한눈에 보기"></nav>
         <div id="evidence-list"></div>
+        </div>
       </section>
     </section>
 
     <section class="panel is-pending" id="step-whatif" aria-labelledby="whatif-title">
+      <div class="band">
       <h2 id="whatif-title" tabindex="-1"><span class="step-badge" aria-hidden="true">3</span> What-if Lab + Feedback</h2>
+        <div class="glyphs deco-dark" aria-hidden="true"><span>{</span><span>}</span><span>[</span><span>]</span><span>;</span><span>_</span><span class="g-b">if</span><span class="g-a">(</span><span>)</span><span>=</span><span>.</span><span class="g-c">#</span><span>/</span><span>&lt;</span><span>&gt;</span><span class="g-b">:</span><span>"</span><span>+</span><span class="g-a">*</span><span>!</span><span>?</span><span>@</span><span>%</span><span>&amp;</span><span class="g-b">|</span><span>~</span><span>^</span><span>$</span><span>,</span><span class="g-a">-</span><span>0</span><span>1</span><span>x</span><span class="g-b">fn</span><span>{</span><span>}</span><span>[</span><span class="g-c">]</span><span>;</span><span>if</span><span class="g-a">(</span><span>)</span><span class="g-b">=</span><span>=&gt;</span><span>.</span><span>#</span><span>/</span><span>&lt;</span><span>&gt;</span><span>:</span><span class="g-c">+</span><span class="g-a">*</span><span>!</span><span>?</span><span>@</span><span>%</span><span>&amp;</span><span>|</span><span>~</span><span>^</span><span class="g-b">$</span><span>,</span><span class="g-a">-</span><span class="g-c">0</span><span>1</span><span>x</span><span>_</span><span>{</span><span>}</span><span class="g-b">[</span><span>]</span><span>;</span><span>fn</span><span class="g-a">(</span><span>)</span><span>=</span><span class="g-c">.</span><span>#</span><span class="g-b">/</span><span>&lt;</span><span>&gt;</span></div>
+        <div class="planets deco-light" aria-hidden="true"><img src="/static/img/planets-2.svg" alt="" width="1440" height="160"></div>
+      </div>
       <p id="whatif-empty">심층 분석을 마치면 그 결정을 바탕으로 가정 상황을 만들고, 답변에 대한 피드백을 받을 수 있습니다.</p>
       <div id="whatif-intro"></div>
       <div class="alert alert-error" id="whatif-error" role="alert" hidden></div>

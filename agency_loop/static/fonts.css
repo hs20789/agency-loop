@@ -1,0 +1,3 @@
+/* MaruBuri (headings), served from this app only. Kept apart from app.css, which has no url(). */
+@font-face { font-family: "MaruBuri"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/MaruBuri-Regular.woff2") format("woff2"); }
+@font-face { font-family: "MaruBuri"; font-weight: 600; font-style: normal; font-display: swap; src: url("fonts/MaruBuri-SemiBold.woff2") format("woff2"); }
