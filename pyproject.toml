@@ -1,0 +1,33 @@
+[project]
+name = "agency-loop"
+version = "0.1.0"
+description = "Agency Loop MVP: Claude Code 세션에서 의사결정을 찾아 이해·검증·통제를 연습하게 돕는 웹 서비스"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "anthropic>=2.6,<3",
+    "httpx>=0.28,<1",
+    "jsonschema>=4.20,<5",
+    "mcp>=1.30,<2",
+    "starlette>=1.10,<2",
+    "uvicorn>=0.54,<1",
+]
+
+[tool.uv]
+package = false
+python-preference = "only-system"
+python-downloads = "never"
+
+[dependency-groups]
+dev = ["ruff>=0.6"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "S"]
+ignore = ["E501", "S101", "S311"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
