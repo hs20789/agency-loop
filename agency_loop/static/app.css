@@ -3603,3 +3603,30 @@ dialog,
 .ev-preview {
   box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
 }
+
+/* Keep the top bar on one row on desktop once the fourth action (작업 공간 삭제) appears. */
+@media (min-width: 72rem) {
+  .topbar-inner {
+    flex-wrap: nowrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .stepper li {
+    padding: 0 0.5rem;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    flex: none;
+    gap: 0;
+  }
+
+  .topbar-actions .btn {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .brand {
+    flex: none;
+  }
+}

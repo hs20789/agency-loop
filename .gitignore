@@ -1,5 +1,35 @@
+# Python
 .venv/
 __pycache__/
-*.pyc
-var/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 환경변수와 비밀값 (.env.example만 저장소에 둡니다)
 .env
+.env.*
+!.env.example
+
+# 실행 중 만들어지는 파일 (비용 장부 등)
+var/
+*.log
+nohup.out
+
+# Node (UI 스모크 시험은 패키지를 쓰지 않지만, 실수로 생기는 경우 대비)
+node_modules/
+
+# 편집기·OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code 로컬 설정
+.claude/settings.local.json
