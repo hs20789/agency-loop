@@ -13,7 +13,7 @@ import uuid
 import httpx
 
 from agency_loop.config import Settings
-from agency_loop.flow.schemas import is_valid
+from agency_loop.flow.schemas import is_valid, repair
 from agency_loop.providers.base import Gate, LLMResult, ProviderError, Status
 
 COOLDOWN_SEC = 60
@@ -22,10 +22,11 @@ _cooldown_until = 0.0  # server-wide: shared by HcxReviewer and ClovaReranker
 
 
 def _lenient_json(text: str) -> object:
-    """JSON output is not documented for HCX-007: take the first "{" through the last "}"."""
+    """JSON output is not documented for HCX-007: take the first "{" through the last "}". strict=False accepts raw
+    control characters inside strings, such as a tab HCX-007 copies verbatim from test output into a quote."""
     start, end = text.find("{"), text.rfind("}")
     try:
-        return json.loads(text[start : end + 1]) if 0 <= start < end else None
+        return json.loads(text[start : end + 1], strict=False) if 0 <= start < end else None
     except ValueError:
         return None
 
@@ -108,7 +109,7 @@ class HcxReviewer(_ClovaClient):
         text = message.get("content") if isinstance(message, dict) else None
         if not isinstance(text, str):
             raise ProviderError("invalid_output", attempted=True)
-        data = _lenient_json(text)
+        data = repair(_lenient_json(text), schema)  # HCX-007 has no enforced schema and drops empty keys
         usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
         return LLMResult(
             provider="hcx",

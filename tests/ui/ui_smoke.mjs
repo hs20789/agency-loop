@@ -709,8 +709,8 @@ feedbackText = text(page.$("feedback-list"));
 check(feedbackText.includes("첫 피드백과 비교") && feedbackText.includes("다음 난이도 제안") && feedbackText.includes("같게: 다음에도 같은 난이도로"), "3: final view with explanation and next difficulty");
 check(isHidden(page.$("answer-form")) && !button(page, "다시 제출(1회)"), "3: no third submission");
 // App and model text only: recorded session output (e.g. pytest's "[100%]") is evidence, not a score.
-const generated = ["reveal-block", "analysis-result", "review-list", "comparison-body", "whatif-card", "feedback-list"].map((id) => text(page.$(id))).join(" ")
-  .replace(text(page.$("reveal-block").querySelector(".code-viewer")), "");
+const generated = page.$("reveal-block").querySelectorAll(".code-viewer").map(text).reduce((all, recorded) => all.replace(recorded, ""),
+  ["reveal-block", "analysis-result", "review-list", "comparison-body", "whatif-card", "feedback-list"].map((id) => text(page.$(id))).join(" "));
 check(!/\d\s*(점|%)|점수:|정답률/.test(generated), "no scores or rates");
 check(errors.length === 0, `no async errors (${errors.map(String).join("; ")})`);
 

@@ -156,6 +156,26 @@ BY_STAGE = {
 }
 
 
+# Keys a model without enforced structured output (HCX-007) tends to leave out when it has nothing to put there.
+# Only these are filled in; any other missing key still fails the schema check.
+_FILLABLE = {"quote": "", "evidence_ids": []}
+
+
+def repair(data: object, schema: dict) -> object:
+    """Fills the `_FILLABLE` keys a reply left out and drops keys the schema does not allow, recursively.
+    Run before `is_valid` on output that no API enforced; it never invents content, so anything else wrong stays wrong."""
+    if schema.get("type") == "object" and isinstance(data, dict):
+        props = schema.get("properties", {})
+        out = {k: repair(v, props[k]) for k, v in data.items() if k in props or schema.get("additionalProperties", True)}
+        for key in schema.get("required", []):
+            if key not in out and key in _FILLABLE:
+                out[key] = type(_FILLABLE[key])(_FILLABLE[key])
+        return out
+    if schema.get("type") == "array" and isinstance(data, list) and isinstance(schema.get("items"), dict):
+        return [repair(item, schema["items"]) for item in data]
+    return data
+
+
 def is_valid(data: object, schema: dict) -> bool:
     """True when `data` matches `schema` (used for mock, HCX-007 and DeepSeek output and as a Claude double check)."""
     try:

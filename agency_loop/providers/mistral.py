@@ -15,7 +15,7 @@ import uuid
 import httpx
 
 from agency_loop.config import Settings
-from agency_loop.flow.schemas import is_valid
+from agency_loop.flow.schemas import is_valid, repair
 from agency_loop.ledger import Ledger, LedgerRefused
 from agency_loop.providers.base import Gate, LLMResult, ProviderError, Status
 
@@ -135,7 +135,7 @@ class DeepSeekReviewer:
 
         text = _text(content)
         try:
-            data = json.loads(text)
+            data = repair(json.loads(text, strict=False), schema)  # strict mode is asked for, not guaranteed
         except ValueError:
             data = None
         return LLMResult(

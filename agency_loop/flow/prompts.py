@@ -155,7 +155,8 @@ SYSTEM = {
         "담으세요.\n"
         "- 점마다 evidence_ids에 뒷받침하는 근거 ID를 넣으세요. 근거로 확인할 수 없는 의견은 근거 ID 없이 쓰고 "
         "확인이 필요하다고 밝히세요.\n"
-        "- 근거를 인용하면 quote에 원문 일부를 보이는 그대로(기호와 역슬래시 포함) 복사하고, 인용하지 않으면 \"\"로 두세요.",
+        "- 근거를 인용하면 quote에 원문 일부를 보이는 그대로(기호와 역슬래시 포함) 복사하고, 인용하지 않으면 \"\"로 두세요.\n"
+        "- points의 항목마다 type, text, evidence_ids, quote 네 키를 모두 쓰세요. 값이 없으면 []나 \"\"로 두고 키를 빼지 마세요.",
         '출력 형식: {"summary": "...", "points": [{"type": "judgment|issue|counterexample|alternative|missing_evidence", '
         '"text": "...", "evidence_ids": ["E0001"], "quote": "..."}]}',
     ]),

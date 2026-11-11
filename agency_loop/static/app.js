@@ -78,6 +78,7 @@
   const REVIEWERS = ["hcx", "deepseek"]; // the server's comparison order after Claude
   const PROVIDER_NAMES = { anthropic: "Claude", hcx: "HCX-007", deepseek: "DeepSeek" };
   const MODE_NAMES = [["anthropic", "Claude"], ["clova", "CLOVA(HCX-007·리랭커)"], ["mistral", "DeepSeek"], ["embed", "BGE-M3 임베딩"], ["local_llm", "Local LLM 요약"]];
+  const POINT_TYPES = { judgment: "판단", issue: "문제", counterexample: "반례", alternative: "대안", missing_evidence: "근거 누락" };
   const MODES = { mock: ["모의", "mock"], live: ["실제", "info"], off: ["꺼짐", "muted"] };
   const NOTICE = {
     insufficient: "근거가 부족해 모델을 호출하지 않았습니다. 규칙 엔진이 찾은 아래 근거만 보여 주며, 개발 과정 리포트·가정 상황·피드백도 만들지 않습니다.",
@@ -278,9 +279,10 @@
     });
   }
 
-  function actionButton(label, onClick, kind = "primary") {
-    const button = el("button", { type: "button", class: `btn btn-${kind} js-lock` }, label);
-    button.disabled = isLocked();
+  // free: a button that stays usable while other jobs run (independent reviews); only a request in flight blocks it.
+  function actionButton(label, onClick, kind = "primary", free = false) {
+    const button = el("button", { type: "button", class: `btn btn-${kind} ${free ? "js-free" : "js-lock"}` }, label);
+    button.disabled = free ? state.busy : isLocked();
     button.addEventListener("click", onClick);
     return button;
   }
@@ -559,9 +561,11 @@
     }
   }
 
+  // Jobs that run beside the flow: the Local LLM summary and the independent reviews never lock other buttons.
+  const BACKGROUND = new Set(["summary", "review:hcx", "review:deepseek"]);
+
   function isLocked() {
-    // The Local LLM summary never blocks the flow, so only the other jobs lock the action buttons.
-    return state.busy || [...state.polling.values()].some((kind) => kind !== "summary");
+    return state.busy || [...state.polling.values()].some((kind) => !BACKGROUND.has(kind));
   }
 
   function setBusy(busy) {
@@ -573,6 +577,7 @@
     $("delete-open").disabled = busy;
     const locked = isLocked();
     for (const button of document.querySelectorAll(".js-lock")) button.disabled = locked;
+    for (const button of document.querySelectorAll(".js-free")) button.disabled = busy;
   }
 
   function resetToUpload() {
@@ -952,10 +957,11 @@
       el("dl", { class: "facts" },
         fact("내 예측", p.choice_label),
         fact("기록된 결과", r.result_label),
-        fact("명령", el("code", {}, r.command)),
         fact("종료 코드", `${r.exit_code} (${source})`),
         fact("요약 줄", el("code", {}, r.summary_line || "없음"))),
       p.reason ? el("p", { class: "my-answer" }, el("strong", {}, "내 이유: "), p.reason) : null,
+      el("h4", {}, "실행한 명령"),
+      commandViewer(r.command),
       el("h4", {}, "판단에 필요한 확인 지점"),
       textList(retro.checkpoints, "plain-list"),
       el("h4", {}, "명령 결과 (출력 발췌)"),
@@ -1142,7 +1148,7 @@
     const declined = open.filter((p) => consents[`review:${p}`] && !consents[`review:${p}`].providers[p]);
     $("review-section").hidden = !results.analysis;
     $("review-actions").replaceChildren(
-      ...(open.length ? [el("div", { class: "actions" }, ...open.map((p) => actionButton(JOBS[`review:${p}`].name, () => startReview(p, false), "secondary")))] : []),
+      ...(open.length ? [el("div", { class: "actions" }, ...open.map((p) => actionButton(JOBS[`review:${p}`].name, () => startReview(p, false), "secondary", true)))] : []),
       ...declined.map((p) => hint(`${PROVIDER_NAMES[p]} 전송에 동의하지 않아 검토를 요청하지 않았습니다. 버튼을 누르면 미리보기를 다시 엽니다.`)));
     for (const p of REVIEWERS) renderJobLine(`review-${p}`);
     $("review-list").replaceChildren(...REVIEWERS.filter((p) => reviews[p]).map((p) => reviewCard(p, reviews[p])));
@@ -1155,10 +1161,42 @@
     const body = r.format_ok
       ? [el("p", { class: "lead-strong" }, r.summary),
         r.points.length ? el("ul", { class: "statement-list" }, ...r.points.map(statementItem)) : hint("지적한 점이 없습니다.")]
-      : [el("p", { class: "tags" }, badge("형식 미확인", "warn", "약속한 형식이 아니라 근거 등급을 붙이지 못한 원문입니다.")),
-        hint("약속한 JSON 형식이 아니어서 근거 등급과 비교 없이, 받은 글을 그대로 보여 줍니다."),
-        el("pre", { class: "payload", tabindex: "0", "aria-label": `${name} 응답 원문` }, r.text || "")];
+      : uncheckedReview(name, r.text || "");
     return el("article", { class: "card-block" }, el("header", { class: "result-head" }, el("h5", {}, name), modelTags(r)), ...body);
+  }
+
+  // Outside the schema: no grades and no comparison. If the reply still reads as the promised JSON, show its
+  // summary and points as plain text; otherwise show the raw reply.
+  function uncheckedReview(name, text) {
+    const head = [el("p", { class: "tags" }, badge("형식 미확인", "warn", "약속한 형식이 아니라 근거 등급을 붙이지 못한 응답입니다."))];
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    let data = null;
+    if (start >= 0 && end > start) {
+      // A raw tab or line break inside a string is not JSON; read it as a space, this view is for reading only.
+      for (const candidate of [text.slice(start, end + 1), text.slice(start, end + 1).replace(/[\u0000-\u001f]/g, " ")]) {
+        try {
+          data = JSON.parse(candidate);
+          break;
+        } catch {
+          data = null;
+        }
+      }
+    }
+    const points = data && Array.isArray(data.points) ? data.points.filter((pt) => pt && typeof pt.text === "string") : [];
+    if (!data || typeof data.summary !== "string" || (!data.summary && !points.length)) {
+      return [...head, hint("약속한 JSON 형식이 아니어서 근거 등급과 비교 없이, 받은 글을 그대로 보여 줍니다."),
+        el("pre", { class: "payload", tabindex: "0", "aria-label": `${name} 응답 원문` }, text)];
+    }
+    return [...head, hint("형식이 일부 달라 근거 등급을 붙이지 못했고 모델 비교에서도 빠졌습니다. 내용만 읽기 쉽게 정리했습니다."),
+      data.summary ? el("p", { class: "lead-strong" }, data.summary) : null,
+      points.length ? el("ul", { class: "plain-points" }, ...points.map((pt) => el("li", {},
+        POINT_TYPES[pt.type] ? el("span", { class: "tag tag-muted" }, POINT_TYPES[pt.type]) : null,
+        el("span", {}, pt.text),
+        Array.isArray(pt.evidence_ids) && pt.evidence_ids.length ? el("span", { class: "plain-ids" }, `근거 ${pt.evidence_ids.join(", ")}`) : null)))
+        : hint("지적한 점이 없습니다."),
+      el("details", { class: "ev-meta" }, el("summary", {}, "받은 응답 원문"),
+        el("pre", { class: "payload", tabindex: "0", "aria-label": `${name} 응답 원문` }, text))].filter(Boolean);
   }
 
   function comparisonGroups(c) {
@@ -1206,7 +1244,7 @@
     const failed = job.status === "failed";
     const error = job.error || { message: "작업을 마치지 못했습니다.", retryable: false };
     const advice = Object.hasOwn(ADVICE, error.code || "") ? ADVICE[error.code] : error.retryable ? "다시 시도할 수 있습니다." : null;
-    const retry = failed && error.retryable ? actionButton("다시 시도", RETRY[job.kind], "secondary") : null;
+    const retry = failed && error.retryable ? actionButton("다시 시도", RETRY[job.kind], "secondary", BACKGROUND.has(job.kind)) : null;
     if (retry) retry.setAttribute("aria-label", `${JOBS[job.kind].name} 다시 시도`);
     box.replaceChildren(...[
       el("p", { class: "job-status" },
@@ -1456,6 +1494,18 @@
     return codeTable(`${item.id} 코드 변경${item.file ? ` ${item.file}` : ""}`, rows);
   }
 
+  // A recorded command can be a whole multi-line script: keep its lines, wrap long ones, fold it when it is long.
+  function commandViewer(command) {
+    const lines = (command || "").replace(/\s+$/, "").split("\n");
+    const viewer = codeTable("실행한 명령", lines.map((line, i) =>
+      el("tr", {}, el("td", { class: "ln" }, String(i + 1)), el("td", { class: "src" }, line))));
+    viewer.classList.add("code-wrap");
+    return el("article", { class: "evidence ev-kind-command" },
+      el("header", { class: "evidence-head" }, el("span", { class: "ev-kind" }, KIND_NAME.command),
+        el("span", { class: "ev-pos" }, `${lines.length}줄`)),
+      lines.length > 12 ? collapsible(viewer, lines.length) : viewer);
+  }
+
   function textViewer(item) {
     const rows = item.text.split("\n").map((line, i) =>
       el("tr", {}, el("td", { class: "ln" }, String(i + 1)), el("td", { class: "src" }, line)));
@@ -1480,8 +1530,8 @@
 
   // ---------- Actions: prediction, consent, analysis, What-if, feedback ----------
 
-  async function act(box, work) {
-    if (isLocked()) return;
+  async function act(box, work, free = false) {
+    if (free ? state.busy : isLocked()) return;
     box.hidden = true;
     setBusy(true);
     try {
@@ -1606,7 +1656,7 @@
       }
       renderReviews();
       focusHeading("review-title"); // the button that had focus is gone
-    });
+    }, true);
   }
 
   function startWhatif() {

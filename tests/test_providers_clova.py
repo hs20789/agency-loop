@@ -102,6 +102,34 @@ class ClovaTest(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(result.data)
                 self.assertTrue(result.text)
 
+    async def test_hcx_reply_without_empty_keys_is_repaired(self):
+        # Seen from the live HCX-007: a point with no quote key at all, and an extra key the schema does not allow.
+        self.server.scenarios["hcx"] = ["success"]
+        self.server.hcx_content = (
+            '{"summary": "오류 처리 구현이 드러나지 않음", "points": [{"type": "missing_evidence", '
+            '"text": "오류 처리 파일의 구현과 테스트가 부족해 검토 불가", "evidence_ids": [], "confidence": "low"}]}'
+        )
+        result = await self.review()
+        self.assertEqual(result.data["points"], [{
+            "type": "missing_evidence", "text": "오류 처리 파일의 구현과 테스트가 부족해 검토 불가",
+            "evidence_ids": [], "quote": "",
+        }])
+        # Only empty-able keys are filled: a point without its text is still outside the schema.
+        self.server.reset()
+        self.server.scenarios["hcx"] = ["success"]
+        self.server.hcx_content = '{"summary": "s", "points": [{"type": "issue", "evidence_ids": [], "quote": ""}]}'
+        self.assertIsNone((await self.review()).data)
+
+    async def test_hcx_reply_with_a_raw_tab_in_a_quote_is_read(self):
+        # Seen from the live HCX-007: mutation-test output copied into a quote with its tab, which strict JSON refuses.
+        self.server.scenarios["hcx"] = ["success"]
+        self.server.hcx_content = (
+            '{"summary": "테스트가 복원됨", "points": [{"type": "issue", "text": "변이가 검출됨", '
+            '"evidence_ids": ["E0001"], "quote": "KILLED\tarchived category blocks keeping it on update"}]}'
+        )
+        result = await self.review()
+        self.assertEqual(result.data["points"][0]["quote"], "KILLED\tarchived category blocks keeping it on update")
+
     async def test_hcx_errors_are_mapped_and_never_retried(self):
         cases = [
             ("400", "bad_request", False), ("401", "auth", False), ("500", "server_error", True),
