@@ -33,3 +33,8 @@ Thumbs.db
 
 # Claude Code 로컬 설정
 .claude/settings.local.json
+
+
+# 사진
+*.png
+*.jpg
